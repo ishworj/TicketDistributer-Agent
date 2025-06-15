@@ -1,14 +1,13 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import user from "../models/user";
+import User from "../models/user.js";
 import { inngest } from "../inngest/client.js";
-import user from "../models/user";
 
 export const signup = async (req, res) => {
   const { email, password, skills = [] } = req.body;
   try {
-    const hashed = bcrypt.hash(password, 10);
-    const user = await user.create({ email, password: hashed, skills });
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = await new User({ email, password: hashed, skills }).save();
 
     // fire inngest event
 
@@ -18,11 +17,12 @@ export const signup = async (req, res) => {
     });
 
     const token = jwt.sign(
-      { _id: user._id, role: user.role },
+      { _id: newUser._id, role: newUser.role },
       process.env.JWT_SECRET
     );
-    res.json({ user, token });
+    res.json({ newUser, token });
   } catch (error) {
+    console.log(error);
     res.status(500).json({
       error: "Signup failled",
       details: error.message,
@@ -32,12 +32,13 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  console.log(email, password);
   try {
-    const user = user.findOne({ email });
+    const user =await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "User nor found" });
     }
-    const isMatched = bcrypt.compare(password, user.password);
+    const isMatched = await bcrypt.compare(password, user.password);
 
     if (!isMatched) {
       return res.status(401).json({ error: "Invalid Credintials" });
@@ -81,12 +82,12 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const user = await user.findOne({ email });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    await user.updateOne(
+    await User.updateOne(
       { email },
       { skills: skills.length ? skills : user.skills, role }
     );
@@ -105,8 +106,8 @@ export const getUsers = async (req, res) => {
     if (req.user?.role !== "admin") {
       return res.status(403).json({ error: "Forbidden" });
     }
-    const users = await user.find().select("-password");
-    return res.josn(users);
+    const users = await User.find().select("-password");
+    return res.json(users);
   } catch (error) {
     res.status(500).json({
       error: "getusers failled",

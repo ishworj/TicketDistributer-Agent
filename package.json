@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "inngest-dev": "npx inngest-cli@latest dev"
   },
   "main": "index.js",
   "license": "MIT",
